@@ -33,7 +33,7 @@ Class SeekableIteratorFileReader implements SeekableIterator {
 
   public function open() {
     // Open file in binary mode and seek at the very beginning
-    fopen($this->_filename, 'rb');
+    $this->_fileHandle = fopen($this->_fileName, 'rb');
   }
 
   public function close() {
