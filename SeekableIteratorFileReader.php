@@ -46,7 +46,6 @@ Class SeekableIteratorFileReader implements SeekableIterator {
 
   public function readBlock() {
     if (!feof($this->fileHandle)) {
-      $this->updatePosition();
       $this->buffer = fread($this->fileHandle, $this->blockSize);
     } else {
       return false;
@@ -62,6 +61,8 @@ Class SeekableIteratorFileReader implements SeekableIterator {
     // current position and then store its location
     if (fseek($this->fileHandle,
             ($this->position - $this->blockSize)) === 0) {
+      // Set new location
+      $this->updatePosition();
       $this->readBlock();
     } else {
       // Otherwise mark the position invalid and throw an exception
@@ -86,6 +87,8 @@ Class SeekableIteratorFileReader implements SeekableIterator {
     // Move pointer farther by the block size and then store its location
     if (fseek($this->fileHandle,
             ($this->position + $this->blockSize)) === 0) {
+      // Set new location
+      $this->updatePosition();
       $this->readBlock();
     } else {
       // Otherwise mark the position invalid and throw an exception
@@ -101,7 +104,7 @@ Class SeekableIteratorFileReader implements SeekableIterator {
       throw new Exception('Unable to rewind file position');
     } else {
       // Set new location
-      $this->position = 0;
+      $this->updatePosition();
     }
   }
 
