@@ -1,0 +1,82 @@
+Задача 2
+Имеется таблица пользователей:
+
+CREATE TABLE `users` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+`name` varchar(32) NOT NULL,
+`gender` tinyint(2) NOT NULL,
+`email` varchar(1024) NOT NULL,
+PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+В таблице более 100 млн записей, и она находится под нагрузкой в production (идут запросы на добавление / изменение / удаление).
+В поле email может быть от одного до нескольких перечисленных через запятую адресов. Может быть пусто.
+Напишите скрипт, который выведет список представленных в таблице почтовых доменов с количеством пользователей по каждому домену.
+
+************************************************************
+
+Решение:
+
+  Так как используется тип таблицы InnoDB, то скорее всего дополнительные средства,
+  кэширующие, буферизирующие, создающие временные таблицы в ОЗУ, окажутся неэффективными.
+
+  В случае, когда инфраструктура оптимизирована для работы SQL сервера, то с определённой
+	вероятностью можно считать, что решение будет основываться на использовании курсора,
+	чтобы не создавать дополнительную нагрузку для выполнения внешней локальной программы.
+
+	В случае решения обработки данных внешней программой (скриптом), реализация может быть
+	следующей:
+	  1. Выборка из базы осуществляется заданными порциями только требуемого поля email,
+       с условием, что поле не пустое с сортировкой по единственному доступному индексу и
+			 ограничением выборки:
+			 `SELECT email FROM users ORDER BY id ASC LIMIT ?, ?;`
+		2. Из массива записей конкатинируется строка с разделителем "," между элементами массива;
+		3. Полученная строка санитизируется от пробелов (и других символов по необходимости);
+    4. Результирующая строка разбивается по признаку "," в массив чистых адресов;
+		5. Полученный массив итерируется, каждый элемент разбивается по признаку "@" на подмассив
+		   из аккаунта и доменного имени;
+    6. Аккумулятор доменных имен проверяется на наличие ключа по имени домена:
+		   при отсутсвии инициализируется в значение 1, при наличии инкрементируется на 1;
+    7. По окончании итерации имеется массив, в котором содержатся доменные имена с количеством
+		   аккаунтов для каждого из них.
+
+  При необходимости учёта уникальности каждого из адресов в БД, требуется
+	доработка программы.
+
+	Код:
+
+<?php
+
+// Domain list accumulator
+$count = [];
+
+// Emulates database record set flatten into single dimention array
+$rs = [ 'a@b.com', 'b@b.com, c@b.com', 'c@c.com, c@d.com, c@e.com', 'a@e.com', 'a@b.com' ];
+
+// Collapse all the records into a single line separated with comma
+$line_list = join(',', $rs);
+// Sanitize the list by removing whitespaces and probably other characters
+$line_list = str_replace(' ', '', $line_list);
+
+// Split all the records into array of addresses
+$email_list = explode(',', $line_list);
+
+foreach ($email_list as $email) {
+	// Split each record into account and domain array
+	$ad_list = explode('@', $email);
+
+	// Retrieve domain name itself
+	$domain = $ad_list[1];
+
+	// Checks whether there is a domain already in the array
+	// array_push() is proven slower rather than direct access with []
+	if (array_key_exists($domain, $count)) {
+		$count[$domain] += 1;
+	} else {
+		$count[$domain] = 1;
+	}
+}
+
+// Prints out resulting list with domain name and account quantity
+print_r($count);
+?>
