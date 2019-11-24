@@ -23,6 +23,10 @@ Class SeekableIteratorFileReader implements SeekableIterator {
     }
   }
 
+  public function getBlockSize() {
+    return $this->_blockSize;
+  }
+
   public function setBlockSize(int $size = 1) {
     if ($size < 1) {
       throw new Exception('Block size must be greater than 0');
@@ -49,8 +53,11 @@ Class SeekableIteratorFileReader implements SeekableIterator {
   }
 
   public function prev(): void {
-    // Move pointer farther by the block size and then store its location
-    if (fseek($this->_fileHandle, -($this->_blockSize), SEEK_CUR) === 0) {
+    // Move pointer backward by the block size from the
+    // current position and then store its location
+    if (fseek($this->_fileHandle,
+            -($this->_blockSize),
+            SEEK_CUR) === 0) {
       $this->_position = ftell($this->_fileHandle);
     } else {
       // Otherwise mark the position invalid and throw an exception
@@ -69,7 +76,9 @@ Class SeekableIteratorFileReader implements SeekableIterator {
 
   public function next(): void {
     // Move pointer farther by the block size and then store its location
-    if (fseek($this->_fileHandle, $this->_blockSize, SEEK_CUR) === 0) {
+    if (fseek($this->_fileHandle,
+            ($this->_position + $this->_blockSize),
+            SEEK_SET) === 0) {
       $this->_position = ftell($this->_fileHandle);
     } else {
       // Otherwise mark the position invalid and throw an exception
@@ -79,10 +88,13 @@ Class SeekableIteratorFileReader implements SeekableIterator {
   }
 
   public function rewind(): void {
-    if (rewind($this->fileHandle) === false) {
+    if (rewind($this->_fileHandle) === false) {
       // Mark the position invalid and throw an exception
       $this->_isValid = false;
       throw new Exception('Unable to rewind file position');
+    } else {
+      // Set new location
+      $this->_position = 0;
     }
   }
 
