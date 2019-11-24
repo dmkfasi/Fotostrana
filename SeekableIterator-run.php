@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * This class shall implement SeekableIterator interface
+ * to seek data from large text files (a Gigabyte or so)
+ */
 Class SeekableIteratorFileReader implements SeekableIterator {
 
   protected $_fileName = '';
@@ -40,6 +44,17 @@ Class SeekableIteratorFileReader implements SeekableIterator {
     $this->_buffer = fread($this->_fileHandle, $this->_blockSize);
   }
 
+  public function prev(): void {
+    // Move pointer farther by the block size and then store its location
+    if (fseek($this->_fileHandle, -$this->_blockSize) === 0) {
+      $this->_position = ftell($this->_fileHandle);
+    } else {
+      // Otherwise mark the position invalid and throw an exception
+      $this->_isValid = false;
+      throw new OutOfBoundsException();
+    }
+  }
+
   public function current() {
     return $this->_buffer;
   }
@@ -61,7 +76,7 @@ Class SeekableIteratorFileReader implements SeekableIterator {
 
   public function rewind(): void {
     if (rewind($this->fileHandle) === false) {
-      // Otherwise mark the position invalid and throw an exception
+      // Mark the position invalid and throw an exception
       $this->_isValid = false;
       throw new Exception('Unable to rewind file position');
     }
@@ -72,7 +87,8 @@ Class SeekableIteratorFileReader implements SeekableIterator {
     if (fseek($this->_fileHandle, $position) === 0) {
       $this->_position = $position;
     } else {
-      // Otherwise throw an exception
+      // Otherwise mark the position invalid and throw an exception
+      $this->_isValid = false;
       throw new OutOfBoundsException("Position {$position} is out of bound");
     }
   }
