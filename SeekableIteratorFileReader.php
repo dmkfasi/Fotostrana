@@ -41,12 +41,16 @@ Class SeekableIteratorFileReader implements SeekableIterator {
   }
 
   public function readBlock() {
-    $this->_buffer = fread($this->_fileHandle, $this->_blockSize);
+    if (!feof($this->_fileHandle)) {
+      $this->_buffer = fread($this->_fileHandle, $this->_blockSize);
+    } else {
+      return false;
+    }
   }
 
   public function prev(): void {
     // Move pointer farther by the block size and then store its location
-    if (fseek($this->_fileHandle, -$this->_blockSize) === 0) {
+    if (fseek($this->_fileHandle, -($this->_blockSize), SEEK_CUR) === 0) {
       $this->_position = ftell($this->_fileHandle);
     } else {
       // Otherwise mark the position invalid and throw an exception
@@ -59,13 +63,13 @@ Class SeekableIteratorFileReader implements SeekableIterator {
     return $this->_buffer;
   }
 
-  public function key(): \scalar {
+  public function key(): int {
     return $this->_position;
   }
 
   public function next(): void {
     // Move pointer farther by the block size and then store its location
-    if (fseek($this->_fileHandle, $this->_blockSize) === 0) {
+    if (fseek($this->_fileHandle, $this->_blockSize, SEEK_CUR) === 0) {
       $this->_position = ftell($this->_fileHandle);
     } else {
       // Otherwise mark the position invalid and throw an exception
